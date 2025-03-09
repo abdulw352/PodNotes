@@ -1,4 +1,4 @@
-# [PodNotes](https://chhoumann.github.io/PodNotes)
+# [Podsidian](https://chhoumann.github.io/PodNotes)
 
 <img src="https://github.com/chhoumann/PodNotes/blob/master/docs/docs/resources/podcast_grid_big.png" alt="Podcast grid" align="center">
 
@@ -9,7 +9,7 @@
 
 ---
 
-The one goal for PodNotes is to make it easier to write notes on podcasts.
+The one goal for Podsidian is to make it easier to write notes on podcasts.
 
 Here are the features that will help you do that 👇.
 

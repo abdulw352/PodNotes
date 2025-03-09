@@ -1,4 +1,4 @@
-import type { IPodNotesSettings } from "src/types/IPodNotesSettings";
+import type { IPodsidianSettings } from "src/types/IPodsidianSettings";
 import type { Playlist } from "./types/Playlist";
 
 export const VIEW_TYPE = "podcast_player_view";
@@ -29,7 +29,7 @@ export const LOCAL_FILES_SETTINGS: PlaylistSettings = {
 	shouldRepeat: false,
 };
 
-export const DEFAULT_SETTINGS: IPodNotesSettings = {
+export const DEFAULT_SETTINGS: IPodsidianSettings = {
 	savedFeeds: {},
 	podNotes: {},
 	defaultPlaybackRate: 1,
@@ -70,4 +70,16 @@ export const DEFAULT_SETTINGS: IPodNotesSettings = {
 		template:
 			"# {{title}}\n\nPodcast: {{podcast}}\nDate: {{date}}\n\n{{transcript}}",
 	},
+	
+	// Ollama settings
+	ollamaEnabled: false,
+	ollamaUrl: 'http://localhost:11434',
+	ollamaModel: 'llama3',
+	
+	// Transcription settings
+	transcriptionEnabled: true,
+	whisperCppUrl: '',  // No longer needed but kept for backward compatibility
+	whisperCppModel: 'tiny',  // No longer needed but kept for backward compatibility
+	insightPromptTemplate: 'You are an assistant that provides insights about podcast segments. Analyze the following podcast transcript and provide key points, insights, and a brief summary:\n\n{transcription}',
+	useOpenAIForTranscription: false  // false means use local processing, true means use OpenAI API directly
 };

@@ -1,11 +1,11 @@
 {
-	"id": "podnotes",
-	"name": "PodNotes",
-	"version": "2.13.4",
-	"minAppVersion": "0.15.9",
+	"id": "podsidian",
+	"name": "Podsidian",
+	"version": "0.1.4",
+	"minAppVersion": "0.13.9",
 	"description": "Helps you write notes on podcasts.",
-	"author": "Christian B. B. Houmann",
-	"authorUrl": "https://bagerbach.com",
-	"fundingUrl": "https://buymeacoffee.com/chhoumann",
+	"author": "Abdul",
+	"authorUrl": "",
+	"fundingUrl": "",
 	"isDesktopOnly": false
 }

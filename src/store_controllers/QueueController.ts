@@ -1,15 +1,16 @@
 import { get, Unsubscriber, Writable } from "svelte/store";
 import { QUEUE_SETTINGS } from "../constants";
 import { currentEpisode } from "../store";
-import { IPodNotes } from "../types/IPodNotes";
+import { IPodsidian } from "../types/IPodsidian";
 import { Playlist } from "../types/Playlist";
 import { StoreController } from "../types/StoreController";
+import { Episode } from "../types/Episode";
 
 export class QueueController extends StoreController<Playlist> {
-	private plugin: IPodNotes;
+	private plugin: IPodsidian;
 	private unsubscribeCurrentEpisode: Unsubscriber;
 
-	constructor(store: Writable<Playlist>, plugin: IPodNotes) {
+	constructor(store: Writable<Playlist>, plugin: IPodsidian) {
 		super(store)
 		this.plugin = plugin;
 	}

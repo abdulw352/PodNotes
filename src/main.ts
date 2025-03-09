@@ -8,15 +8,15 @@ import {
 	queue,
 	savedFeeds,
 } from "src/store";
-import { Plugin, type WorkspaceLeaf } from "obsidian";
+import { Plugin, type WorkspaceLeaf, MarkdownView } from "obsidian";
 import { API } from "src/API/API";
 import type { IAPI } from "src/API/IAPI";
 import { DEFAULT_SETTINGS, VIEW_TYPE } from "src/constants";
-import { PodNotesSettingsTab } from "src/ui/settings/PodNotesSettingsTab";
+import { PodsidianSettingsTab } from "./ui/settings/PodsidianSettingsTab";
 import { MainView } from "src/ui/PodcastView";
-import type { IPodNotesSettings } from "./types/IPodNotesSettings";
+import type { IPodsidianSettings } from "./types/IPodsidianSettings";
 import { plugin } from "./store";
-import type { IPodNotes } from "./types/IPodNotes";
+import type { IPodsidian } from "./types/IPodsidian";
 import { EpisodeStatusController } from "./store_controllers/EpisodeStatusController";
 import type { StoreController } from "./types/StoreController";
 import type { PlayedEpisode } from "./types/PlayedEpisode";
@@ -32,7 +32,7 @@ import { TimestampTemplateEngine } from "./TemplateEngine";
 import createPodcastNote from "./createPodcastNote";
 import downloadEpisodeWithNotice from "./downloadEpisode";
 import type DownloadedEpisode from "./types/DownloadedEpisode";
-import DownloadedEpisodesController from "./store_controllers/DownloadedEpisodesController";
+import { DownloadedEpisodesController } from "./store_controllers/DownloadedEpisodesController";
 import { LocalFilesController } from "./store_controllers/LocalFilesController";
 import type PartialAppExtension from "./global";
 import podNotesURIHandler from "./URIHandler";
@@ -40,11 +40,17 @@ import getContextMenuHandler from "./getContextMenuHandler";
 import getUniversalPodcastLink from "./getUniversalPodcastLink";
 import type { IconType } from "./types/IconType";
 import { TranscriptionService } from "./services/TranscriptionService";
+import { OllamaService } from './services/ollama-service';
+import { Writable } from "svelte/store";
 
-export default class PodNotes extends Plugin implements IPodNotes {
+export default class Podsidian extends Plugin implements IPodsidian {
 	public api: IAPI;
-	public settings: IPodNotesSettings;
+	public settings: IPodsidianSettings;
 	public app: PartialAppExtension;
+	public transcriptionService: TranscriptionService;
+	public ollamaService: OllamaService;
+	
+	public player: any;
 
 	private view: MainView;
 
@@ -64,7 +70,6 @@ export default class PodNotes extends Plugin implements IPodNotes {
 	private downloadedEpisodesController: StoreController<{
 		[podcastName: string]: DownloadedEpisode[];
 	}>;
-	private transcriptionService: TranscriptionService;
 
 	private maxLayoutReadyAttempts = 10;
 	private layoutReadyAttempts = 0;
@@ -104,12 +109,13 @@ export default class PodNotes extends Plugin implements IPodNotes {
 		).on();
 
 		this.transcriptionService = new TranscriptionService(this);
+		this.ollamaService = new OllamaService(this.settings);
 
 		this.api = new API();
 
 		this.addCommand({
-			id: "podnotes-show-leaf",
-			name: "Show PodNotes",
+			id: "podsidian-show-leaf",
+			name: "Show Podsidian",
 			icon: "podcast" as IconType,
 			checkCallback: function (checking: boolean) {
 				if (checking) {
@@ -268,7 +274,39 @@ export default class PodNotes extends Plugin implements IPodNotes {
 			callback: () => this.transcriptionService.transcribeCurrentEpisode(),
 		});
 
-		this.addSettingTab(new PodNotesSettingsTab(this.app, this));
+		this.addCommand({
+			id: "capture-timestamp-range",
+			name: "Capture Timestamp Range with AI Insights",
+			checkCallback: (checking) => {
+				const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (!activeView) return false;
+				
+				if (!this.player || !this.player.isPlaying()) return false;
+				
+				if (!checking) {
+					this.player.captureTimestampRange();
+				}
+				
+				return true;
+			}
+		});
+
+		this.addCommand({
+			id: "capture-podcast-snapshot",
+			name: "Capture Podcast Snapshot",
+			checkCallback: (checking) => {
+				const activeView = this.app.workspace.getActiveViewOfType(MainView);
+				if (activeView) {
+					if (!checking) {
+						activeView.captureSnapshot();
+					}
+					return true;
+				}
+				return false;
+			},
+		});
+
+		this.addSettingTab(new PodsidianSettingsTab(this.app, this));
 
 		this.registerView(VIEW_TYPE, (leaf: WorkspaceLeaf) => {
 			this.view = new MainView(leaf, this);
@@ -323,7 +361,11 @@ export default class PodNotes extends Plugin implements IPodNotes {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		this.settings = Object.assign(
+			{},
+			DEFAULT_SETTINGS,
+			await this.loadData(),
+		);
 	}
 
 	async saveSettings() {

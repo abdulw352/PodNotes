@@ -1,17 +1,19 @@
 import { Writable } from "svelte/store";
-import { IPodNotes } from "../types/IPodNotes";
-import { Playlist } from "../types/Playlist";
 import { StoreController } from "../types/StoreController";
+import { IPodsidian } from "../types/IPodsidian";
+import { Playlist } from "../types/Playlist";
 
-export class PlaylistController extends StoreController<{[playlistName: string]: Playlist}> {
-	private plugin: IPodNotes;
+type TPlaylistStoreValue = { [playlistName: string]: Playlist };
 
-	constructor(store: Writable<{[playlistName: string]: Playlist}>, plugin: IPodNotes) {
+export class PlaylistController extends StoreController<TPlaylistStoreValue> {
+	private plugin: IPodsidian;
+
+	constructor(store: Writable<TPlaylistStoreValue>, plugin: IPodsidian) {
 		super(store)
 		this.plugin = plugin;
 	}
 
-	protected onChange(value: {[playlistName: string]: Playlist}) {
+	protected onChange(value: TPlaylistStoreValue) {
 		this.plugin.settings.playlists = value;
 
 		this.plugin.saveSettings();

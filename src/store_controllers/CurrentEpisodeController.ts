@@ -1,12 +1,12 @@
 import { Episode } from "src/types/Episode";
-import { IPodNotes } from "src/types/IPodNotes";
-import { StoreController } from "src/types/StoreController";
+import { IPodsidian } from "../types/IPodsidian";
+import { StoreController } from "../types/StoreController";
 import { Writable } from "svelte/store";
 
 export default class CurrentEpisodeController extends StoreController<Episode> {
-	private plugin: IPodNotes;
+	private plugin: IPodsidian;
 
-	constructor(store: Writable<Episode>, plugin: IPodNotes) {
+	constructor(store: Writable<Episode>, plugin: IPodsidian) {
 		super(store);
 		this.plugin = plugin;
 	}

@@ -1,17 +1,19 @@
-import DownloadedEpisode from "src/types/DownloadedEpisode";
-import { IPodNotes } from "src/types/IPodNotes";
-import { StoreController } from "src/types/StoreController";
 import { Writable } from "svelte/store";
+import { StoreController } from "../types/StoreController";
+import { IPodsidian } from "../types/IPodsidian";
+import DownloadedEpisode from "../types/DownloadedEpisode";
 
-export default class DownloadedEpisodesController extends StoreController<{[podcastName: string]: DownloadedEpisode[]}> {
-	private plugin: IPodNotes;
+type TDownloadedEpisodesStoreValue = { [podcastName: string]: DownloadedEpisode[] };
 
-	constructor(store: Writable<{[podcastName: string]: DownloadedEpisode[]}>, plugin: IPodNotes) {
+export class DownloadedEpisodesController extends StoreController<TDownloadedEpisodesStoreValue> {
+	private plugin: IPodsidian;
+
+	constructor(store: Writable<TDownloadedEpisodesStoreValue>, plugin: IPodsidian) {
 		super(store);
 		this.plugin = plugin;
 	}
 
-	protected onChange(value: {[podcastName: string]: DownloadedEpisode[]}) {
+	protected onChange(value: TDownloadedEpisodesStoreValue) {
 		this.plugin.settings.downloadedEpisodes = value;
 
 		this.plugin.saveSettings();
