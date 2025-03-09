@@ -1,133 +1,159 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher, onMount } from 'svelte';
     import { formatTime } from '../utils/format-time';
 
-    export let currentTime: number;
-    export let duration: number;
-    export let isGeneratingInsights = false;
-    export let transcription = '';
-    export let insights = '';
-
-    let startTime = currentTime;
-    let endTime = Math.min(currentTime + 30, duration);
-    let error = '';
-    let showAdvancedOptions = false;
+    // Props
+    export let currentTime: number = 0;
+    export let duration: number = 0;
+    
+    // Make sure duration is valid
+    $: actualDuration = isFinite(duration) && duration > 0 ? duration : 3600;
+    
+    // Default to start at current time, and end 1 minute later
+    // Initialize in onMount to ensure props are fully loaded
+    let startTime = 0;
+    let endTime = 0;
+    let note = '';
+    let tags = '';
+    
+    // Format for display
+    $: startTimeText = formatTime(startTime); 
+    $: endTimeText = formatTime(endTime);
+    $: durationText = formatTime(endTime - startTime);
 
     const dispatch = createEventDispatcher();
 
-    function handleCancel() {
-        dispatch('close');
-    }
-
-    function handleConfirm() {
-        if (startTime >= endTime) {
-            error = 'Start time must be before end time';
-            return;
-        }
+    // Initialize on mount
+    onMount(() => {
+        // Set initial values
+        startTime = currentTime;
+        endTime = Math.min(currentTime + 60, actualDuration); // Exactly 1 minute ahead
         
-        dispatch('confirm', { startTime, endTime });
-    }
+        console.log(`TimestampRangeModal mounted:
+            currentTime: ${currentTime}
+            duration: ${duration}
+            actualDuration: ${actualDuration}
+            startTime: ${startTime}
+            endTime: ${endTime}
+        `);
+    });
 
-    function handleGenerateInsights() {
+    // Make sure start time can't exceed end time
+    function handleStartTimeChange() {
+        console.log("Start time changed to:", startTime);
         if (startTime >= endTime) {
-            error = 'Start time must be before end time';
-            return;
+            endTime = Math.min(startTime + 60, actualDuration); // Keep 1 minute gap when possible
         }
-        
-        dispatch('generate-insights', { startTime, endTime });
+    }
+    
+    // Make sure end time is valid
+    function handleEndTimeChange() {
+        console.log("End time changed to:", endTime);
+        if (endTime <= startTime) {
+            endTime = startTime + 1; // Ensure at least 1 second difference
+        }
     }
 
+    // Handle saving the snapshot
     function handleSaveSnapshot() {
-        if (startTime >= endTime) {
-            error = 'Start time must be before end time';
-            return;
+        console.log("Save snapshot clicked with:", {
+            startTime,
+            endTime,
+            note,
+            tags
+        });
+        
+        // Ensure end time is valid
+        if (endTime <= startTime) {
+            endTime = Math.min(startTime + 60, actualDuration);
         }
         
-        dispatch('save-snapshot', { startTime, endTime, insights });
+        // Process tags
+        const tagArray = tags
+            ? tags.split(',')
+                .map(tag => tag.trim())
+                .filter(tag => tag.length > 0)
+            : [];
+            
+        // Dispatch event with all the data
+        dispatch('save-snapshot', {
+            startTime,
+            endTime,
+            note,
+            tags: tagArray
+        });
     }
-
-    function toggleAdvancedOptions() {
-        showAdvancedOptions = !showAdvancedOptions;
+    
+    // Handle canceling the dialog
+    function handleCancel() {
+        console.log("Cancel clicked");
+        dispatch('close');
     }
 </script>
 
 <div class="timestamp-range-modal">
     <h3>Podcast Snapshot</h3>
     
-    {#if error}
-        <div class="error">{error}</div>
-    {/if}
-    
     <div class="time-inputs">
         <div class="time-input">
-            <label for="start-time">Start Time</label>
+            <label for="start-time">Start Time: {startTimeText}</label>
             <input 
-                id="start-time" 
+                id="start-time-slider" 
                 type="range" 
                 min="0" 
-                max={duration} 
-                step="1" 
+                max={actualDuration} 
+                step="0.1" 
                 bind:value={startTime} 
+                on:change={handleStartTimeChange}
+                on:input={handleStartTimeChange}
+                class="time-slider"
             />
-            <span>{formatTime(startTime)}</span>
         </div>
         
         <div class="time-input">
-            <label for="end-time">End Time</label>
+            <label for="end-time">End Time: {endTimeText}</label>
             <input 
-                id="end-time" 
+                id="end-time-slider" 
                 type="range" 
                 min="0" 
-                max={duration} 
-                step="1" 
+                max={actualDuration} 
+                step="0.1" 
                 bind:value={endTime} 
+                on:change={handleEndTimeChange}
+                on:input={handleEndTimeChange}
+                class="time-slider"
             />
-            <span>{formatTime(endTime)}</span>
+        </div>
+        
+        <div class="snapshot-duration">
+            <span>Duration: <strong>{durationText}</strong></span>
         </div>
     </div>
     
-    <button class="toggle-advanced" on:click={toggleAdvancedOptions}>
-        {showAdvancedOptions ? 'Hide Advanced Options' : 'Show Advanced Options'}
-    </button>
+    <div class="note-section">
+        <label for="snapshot-note">Note</label>
+        <textarea 
+            id="snapshot-note"
+            placeholder="Add notes about this podcast segment..."
+            rows="3"
+            bind:value={note}
+        ></textarea>
+    </div>
     
-    {#if showAdvancedOptions}
-        <div class="advanced-options">
-            <div class="transcription-section">
-                <h4>Transcription</h4>
-                {#if transcription}
-                    <div class="transcription">{transcription}</div>
-                {:else}
-                    <div class="placeholder">Transcription will appear here after generating insights</div>
-                {/if}
-            </div>
-            
-            <div class="insights-section">
-                <h4>AI Insights</h4>
-                {#if insights}
-                    <div class="insights">{insights}</div>
-                {:else}
-                    <div class="placeholder">Insights will appear here after generation</div>
-                {/if}
-            </div>
-        </div>
-    {/if}
+    <div class="tags-section">
+        <label for="snapshot-tags">Tags (comma separated)</label>
+        <input 
+            id="snapshot-tags"
+            type="text"
+            placeholder="tag1, tag2, tag3"
+            bind:value={tags}
+        />
+    </div>
     
     <div class="buttons">
-        <button class="cancel" on:click={handleCancel}>Cancel</button>
-        <button class="confirm" on:click={handleConfirm}>Insert Timestamp</button>
-        <button 
-            class="generate" 
-            on:click={handleGenerateInsights} 
-            disabled={isGeneratingInsights}
-        >
-            {isGeneratingInsights ? 'Generating...' : 'Generate Insights'}
-        </button>
-        <button 
-            class="save-snapshot" 
-            on:click={handleSaveSnapshot} 
-            disabled={isGeneratingInsights || !insights}
-        >
-            Save Snapshot
+        <button class="cancel-button" on:click={handleCancel}>Cancel</button>
+        <button class="save-button" on:click={handleSaveSnapshot}>
+            <span class="button-text">Save Snapshot</span>
         </button>
     </div>
 </div>
@@ -135,105 +161,109 @@
 <style>
     .timestamp-range-modal {
         padding: 1rem;
-        max-width: 600px;
-        max-height: 80vh;
-        overflow-y: auto;
-    }
-    
-    .error {
-        color: var(--text-error);
-        margin-bottom: 1rem;
-        padding: 0.5rem;
-        background-color: var(--background-modifier-error);
-        border-radius: 4px;
+        max-width: 550px;
     }
     
     .time-inputs {
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background-color: var(--background-secondary);
+        border-radius: 4px;
     }
     
     .time-input {
+        margin-bottom: 1.2rem;
+    }
+    
+    .time-input label {
+        display: block;
         margin-bottom: 0.5rem;
+        font-weight: bold;
     }
     
-    .toggle-advanced {
-        background: transparent;
-        border: none;
-        color: var(--text-accent);
-        cursor: pointer;
-        padding: 0.5rem 0;
-        text-align: left;
+    .time-slider {
         width: 100%;
-        margin-bottom: 1rem;
+        height: 8px;
+        cursor: pointer;
+        -webkit-appearance: none;
+        background: var(--interactive-accent);
+        border-radius: 4px;
+        margin: 10px 0;
     }
     
-    .advanced-options {
-        margin-bottom: 1rem;
+    .time-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--text-on-accent);
+        cursor: pointer;
+    }
+    
+    .snapshot-duration {
+        text-align: center;
+        margin-top: 1rem;
+        font-weight: bold;
+        font-size: 1.1em;
+    }
+    
+    .note-section, .tags-section {
+        margin-bottom: 1.5rem;
+    }
+    
+    .note-section label, .tags-section label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+    }
+    
+    textarea, input[type="text"] {
+        width: 100%;
+        padding: 10px;
+        border-radius: 4px;
         border: 1px solid var(--background-modifier-border);
-        border-radius: 4px;
-        padding: 1rem;
+        background-color: var(--background-primary);
     }
     
-    .transcription-section, .insights-section {
-        margin-bottom: 1rem;
-    }
-    
-    .transcription, .insights {
-        background-color: var(--background-secondary);
-        padding: 0.5rem;
-        border-radius: 4px;
-        max-height: 150px;
-        overflow-y: auto;
-        white-space: pre-wrap;
-    }
-    
-    .placeholder {
-        color: var(--text-faint);
-        font-style: italic;
+    textarea {
+        min-height: 80px;
+        resize: vertical;
     }
     
     .buttons {
         display: flex;
         justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 0.5rem;
+        gap: 1rem;
     }
     
     button {
-        padding: 0.5rem 1rem;
+        padding: 0.7rem 1.2rem;
         border-radius: 4px;
         cursor: pointer;
         flex: 1;
-        min-width: 120px;
+        font-weight: bold;
+        transition: background-color 0.2s;
+        border: none;
+        font-size: 1em;
     }
     
-    button.cancel {
+    .button-text {
+        color: white;
+        font-weight: bold;
+        display: inline-block;
+    }
+    
+    .cancel-button {
         background-color: var(--background-modifier-error);
-        color: var(--text-on-accent);
+        color: white !important;
     }
     
-    button.confirm {
-        background-color: var(--interactive-accent);
-        color: var(--text-on-accent);
-    }
-    
-    button.generate {
+    .save-button {
         background-color: var(--interactive-success);
-        color: var(--text-on-accent);
+        color: white !important;
     }
     
-    button.save-snapshot {
-        background-color: var(--interactive-accent);
-        color: var(--text-on-accent);
-    }
-    
-    button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-    
-    h3, h4 {
-        margin-top: 0;
-        margin-bottom: 1rem;
+    button:hover {
+        opacity: 0.9;
     }
 </style> 

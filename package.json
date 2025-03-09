@@ -97,6 +97,7 @@
   },
   "dependencies": {
     "fuse.js": "^6.6.2",
-    "openai": "^4.52.7"
+    "openai": "^4.52.7",
+    "vosk-browser": "^0.0.8"
   }
 }

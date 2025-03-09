@@ -44,6 +44,7 @@ export interface IPodsidianSettings {
 	
 	// Transcription settings
 	transcriptionEnabled: boolean;
+	transcriptionMode: 'lightweight' | 'whisperCpp' | 'openai';
 	whisperCppUrl: string;
 	whisperCppModel: string;
 	insightPromptTemplate: string;

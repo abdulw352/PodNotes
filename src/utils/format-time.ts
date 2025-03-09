@@ -4,7 +4,17 @@
  * @returns A formatted time string
  */
 export function formatTime(seconds: number): string {
-    if (isNaN(seconds)) return '00:00';
+    // Handle invalid or extreme inputs
+    if (isNaN(seconds) || !isFinite(seconds)) return '00:00';
+    
+    // Cap at reasonable maximum (999 hours)
+    const MAX_REASONABLE_TIME = 999 * 3600; // 999 hours in seconds
+    if (seconds > MAX_REASONABLE_TIME) {
+        seconds = MAX_REASONABLE_TIME;
+    }
+    
+    // Ensure seconds is non-negative
+    seconds = Math.max(0, seconds);
     
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);

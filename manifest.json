@@ -1,8 +1,8 @@
 {
 	"id": "podsidian",
 	"name": "Podsidian",
-	"version": "0.1.4",
-	"minAppVersion": "0.13.9",
+	"version": "0.12.27",
+	"minAppVersion": "0.15.9",
 	"description": "Helps you write notes on podcasts.",
 	"author": "Abdul",
 	"authorUrl": "",

@@ -358,6 +358,11 @@ export default class Podsidian extends Plugin implements IPodsidian {
 		this?.localFilesController.off();
 		this?.downloadedEpisodesController.off();
 		this?.currentEpisodeController.off();
+		
+		// Clean up the transcription services
+		if (this.transcriptionService) {
+			(this.transcriptionService as any).cleanup?.();
+		}
 	}
 
 	async loadSettings() {

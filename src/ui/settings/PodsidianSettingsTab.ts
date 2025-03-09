@@ -342,37 +342,104 @@ export class PodsidianSettingsTab extends PluginSettingTab {
 		// Add a description about the transcription options
 		const infoEl = container.createEl("div", { cls: "setting-item-description" });
 		infoEl.createEl("p", { 
-			text: "Podsidian uses OpenAI's Whisper model for transcription. You can choose between two modes: direct API access or local processing."
+			text: "Podsidian offers three ways to transcribe podcasts: a lightweight model built-in, WhisperCPP server, or OpenAI's API."
 		});
 		
-		// Transcription service selection
+		// Transcription mode selection
 		new Setting(container)
-			.setName("Transcription Service")
-			.setDesc("Choose which service to use for transcription.")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings.useOpenAIForTranscription)
-					.setTooltip("Toggle between local processing (off) and OpenAI API (on)")
-					.onChange(async (value) => {
-						this.plugin.settings.useOpenAIForTranscription = value;
+			.setName("Transcription Mode")
+			.setDesc("Choose which transcription method to use.")
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption('lightweight', 'Lightweight (built-in)')
+					.addOption('whisperCpp', 'WhisperCPP Server')
+					.addOption('openai', 'OpenAI API')
+					.setValue(this.plugin.settings.transcriptionMode)
+					.onChange(async (value: 'lightweight' | 'whisperCpp' | 'openai') => {
+						this.plugin.settings.transcriptionMode = value;
+						
+						// For backward compatibility
+						this.plugin.settings.useOpenAIForTranscription = (value === 'openai');
+						
 						await this.plugin.saveSettings();
+						
 						// Update visibility of related settings
-						openAISettings.style.display = value ? "block" : "none";
-						localSettings.style.display = value ? "none" : "block";
+						lightweightSettings.style.display = value === 'lightweight' ? 'block' : 'none';
+						whisperCppSettings.style.display = value === 'whisperCpp' ? 'block' : 'none';
+						openAISettings.style.display = value === 'openai' ? 'block' : 'none';
 					});
-				toggle.toggleEl.createSpan({
-					text: " Use OpenAI API directly",
-					attr: { style: "margin-left: 8px;" }
-				});
 			});
 		
 		// Create containers for each service's settings
+		const lightweightSettings = container.createDiv();
+		const whisperCppSettings = container.createDiv();
 		const openAISettings = container.createDiv();
-		const localSettings = container.createDiv();
 		
-		// Set initial visibility based on current setting
-		openAISettings.style.display = this.plugin.settings.useOpenAIForTranscription ? "block" : "none";
-		localSettings.style.display = this.plugin.settings.useOpenAIForTranscription ? "none" : "block";
+		// Set initial visibility based on current mode
+		const currentMode = this.plugin.settings.transcriptionMode;
+		lightweightSettings.style.display = currentMode === 'lightweight' ? 'block' : 'none';
+		whisperCppSettings.style.display = currentMode === 'whisperCpp' ? 'block' : 'none';
+		openAISettings.style.display = currentMode === 'openai' ? 'block' : 'none';
+		
+		// Lightweight model settings
+		lightweightSettings.createEl("h5", { text: "Vosk Speech Recognition" });
+		
+		// Add information about the lightweight model
+		const lightweightInfoEl = lightweightSettings.createEl("div", { cls: "setting-item-description" });
+		lightweightInfoEl.createEl("p", { 
+			text: "Vosk runs directly in Obsidian and provides offline speech recognition. The model will be downloaded once (about 40MB) and stored locally."
+		});
+        
+        // Add benefits of Vosk
+        const voskBenefits = lightweightInfoEl.createEl("ul");
+        voskBenefits.createEl("li", { text: "Completely private - all processing happens on your device" });
+        voskBenefits.createEl("li", { text: "Works offline - no internet connection needed after model download" });
+        voskBenefits.createEl("li", { text: "No API key required" });
+        voskBenefits.createEl("li", { text: "Lightweight enough to run in Obsidian" });
+		
+		// WhisperCPP settings
+		whisperCppSettings.createEl("h5", { text: "WhisperCPP Settings" });
+		
+		new Setting(whisperCppSettings)
+			.setName("WhisperCPP Server URL")
+			.setDesc("URL of your local WhisperCPP server.")
+			.addText((text) => {
+				text
+					.setPlaceholder("http://localhost:8080")
+					.setValue(this.plugin.settings.whisperCppUrl)
+					.onChange(async (value) => {
+						this.plugin.settings.whisperCppUrl = value;
+						await this.plugin.saveSettings();
+					});
+			});
+			
+		new Setting(whisperCppSettings)
+			.setName("WhisperCPP Model")
+			.setDesc("Model to use for transcription (tiny, base, small, medium, large).")
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("tiny", "Tiny (fastest, least accurate)")
+					.addOption("base", "Base")
+					.addOption("small", "Small")
+					.addOption("medium", "Medium")
+					.addOption("large", "Large (slowest, most accurate)")
+					.setValue(this.plugin.settings.whisperCppModel)
+					.onChange(async (value) => {
+						this.plugin.settings.whisperCppModel = value;
+						await this.plugin.saveSettings();
+					});
+			});
+			
+		// Add a link to WhisperCPP installation instructions
+		const whisperCppInfoEl = whisperCppSettings.createEl("div", { cls: "setting-item-description" });
+		whisperCppInfoEl.createEl("p", { 
+			text: "To use WhisperCPP, you need to install and run WhisperCPP server. No API key required!"
+		});
+		const linkEl = whisperCppInfoEl.createEl("a", {
+			text: "Learn how to set up WhisperCPP",
+			href: "https://github.com/ggerganov/whisper.cpp"
+		});
+		linkEl.target = "_blank";
 		
 		// OpenAI API settings
 		openAISettings.createEl("h5", { text: "OpenAI API Settings" });
@@ -390,29 +457,6 @@ export class PodsidianSettingsTab extends PluginSettingTab {
 					});
 				text.inputEl.type = "password";
 			});
-		
-		// Local processing settings
-		localSettings.createEl("h5", { text: "Local Processing Settings" });
-		
-		new Setting(localSettings)
-			.setName("OpenAI API Key for Local Processing")
-			.setDesc("Even for local processing, an OpenAI API key is required. This is used to access the Whisper model.")
-			.addText((text) => {
-				text
-					.setPlaceholder("Enter your OpenAI API key")
-					.setValue(this.plugin.settings.openAIApiKey)
-					.onChange(async (value) => {
-						this.plugin.settings.openAIApiKey = value;
-						await this.plugin.saveSettings();
-					});
-				text.inputEl.type = "password";
-			});
-			
-		// Add information about local processing
-		const localInfoEl = localSettings.createEl("div", { cls: "setting-item-description" });
-		localInfoEl.createEl("p", { 
-			text: "Local processing still requires an OpenAI API key, but processes the audio on your device before sending it to OpenAI. This can provide better privacy for sensitive content."
-		});
 
 		// Common settings for both services
 		container.createEl("h5", { text: "Transcript File Settings" });

@@ -1,6 +1,4 @@
 import { TimestampRangeModalController } from '../modals/timestamp-range-modal';
-import { OllamaService } from '../services/ollama-service';
-import { TranscriptionService } from '../services/transcription-service';
 import { onMount, createEventDispatcher } from 'svelte';
 import { formatTime } from '../utils/format-time';
 import type { App } from 'obsidian';
@@ -13,12 +11,8 @@ export let episode: Episode;
 
 const dispatch = createEventDispatcher();
 
-let ollamaService: OllamaService;
-let transcriptionService: TranscriptionService;
-
 onMount(() => {
-    ollamaService = new OllamaService(plugin.settings);
-    transcriptionService = new TranscriptionService(plugin.settings);
+    // Nothing to initialize anymore
 });
 
 function captureTimestamp() {
@@ -27,9 +21,7 @@ function captureTimestamp() {
     const modal = new TimestampRangeModalController(
         app,
         audio,
-        ollamaService,
-        transcriptionService,
-        ({ startTime, endTime, insights }) => {
+        ({ startTime, endTime, note, tags }) => {
             const startTimeFormatted = formatTime(startTime);
             const endTimeFormatted = formatTime(endTime);
             
@@ -41,8 +33,12 @@ function captureTimestamp() {
             
             let fullText = timestampText;
             
-            if (insights) {
-                fullText += `\n\n**AI Insights:**\n${insights}\n`;
+            if (note && note.trim()) {
+                fullText += `\n\n${note}\n`;
+            }
+            
+            if (tags && tags.length > 0) {
+                fullText += `\n${tags.map(tag => `#${tag}`).join(' ')}\n`;
             }
             
             dispatch('timestamp', { text: fullText });
@@ -58,9 +54,7 @@ function captureSnapshot() {
     const modal = new TimestampRangeModalController(
         app,
         audio,
-        ollamaService,
-        transcriptionService,
-        ({ startTime, endTime, transcription, insights }) => {
+        ({ startTime, endTime, note, tags }) => {
             const startTimeFormatted = formatTime(startTime);
             const endTimeFormatted = formatTime(endTime);
             
@@ -76,12 +70,12 @@ function captureSnapshot() {
             // Build the full snapshot text
             let snapshotText = `${snapshotTitle}\n\n${timestampText}\n\n`;
             
-            if (transcription) {
-                snapshotText += `**Transcription:**\n\n${transcription}\n\n`;
+            if (note && note.trim()) {
+                snapshotText += `${note}\n\n`;
             }
             
-            if (insights) {
-                snapshotText += `**AI Insights:**\n\n${insights}\n\n`;
+            if (tags && tags.length > 0) {
+                snapshotText += `${tags.map(tag => `#${tag}`).join(' ')}\n\n`;
             }
             
             // Add a separator

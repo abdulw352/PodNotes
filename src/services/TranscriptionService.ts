@@ -7,6 +7,7 @@ import {
 	TranscriptTemplateEngine,
 } from "../TemplateEngine";
 import type { Episode } from "src/types/Episode";
+import { LightweightTranscriptionService } from "./LightweightTranscriptionService";
 
 function TimerNotice(heading: string, initialMessage: string) {
 	let currentMessage = initialMessage;
@@ -51,11 +52,13 @@ function formatTime(ms: number): string {
 export class TranscriptionService {
 	private plugin: Podsidian;
 	private client: OpenAI | null = null;
+	private lightweightService: LightweightTranscriptionService;
 	private MAX_RETRIES = 3;
 	private isTranscribing = false;
 
 	constructor(plugin: Podsidian) {
 		this.plugin = plugin;
+		this.lightweightService = new LightweightTranscriptionService(plugin);
 		
 		// Initialize OpenAI client only if API key is provided
 		if (this.plugin.settings.openAIApiKey) {
@@ -114,22 +117,33 @@ export class TranscriptionService {
 
 			let transcription: string;
 
-			// Determine which transcription method to use
-			if (this.plugin.settings.useOpenAIForTranscription) {
-				// Use OpenAI API directly
-				notice.update("Starting transcription with OpenAI API...");
-				const chunks = this.chunkFile(fileBuffer);
-				const files = this.createChunkFiles(
-					chunks,
-					podcastFile.basename,
-					fileExtension,
-					mimeType,
-				);
-				transcription = await this.transcribeChunksWithOpenAI(files, notice.update);
-			} else {
-				// Use local processing
-				notice.update("Starting local transcription...");
-				transcription = await this.transcribeWithWhisperCPP(fileBuffer, fileExtension, notice.update);
+			// Determine which transcription mode to use
+			switch(this.plugin.settings.transcriptionMode) {
+				case 'lightweight':
+					notice.update("Starting transcription with lightweight model...");
+					transcription = await this.transcribeWithLightweight(fileBuffer);
+					break;
+				case 'whisperCpp':
+					notice.update("Starting transcription with WhisperCPP...");
+					transcription = await this.transcribeWithWhisperCPP(fileBuffer, fileExtension, notice.update);
+					break;
+				case 'openai':
+					notice.update("Starting transcription with OpenAI API...");
+					const chunks = this.chunkFile(fileBuffer);
+					const files = this.createChunkFiles(chunks, podcastFile.basename, fileExtension, mimeType);
+					transcription = await this.transcribeChunksWithOpenAI(files, notice.update);
+					break;
+				default:
+					// For backward compatibility
+					if (this.plugin.settings.useOpenAIForTranscription) {
+						notice.update("Starting transcription with OpenAI API...");
+						const chunks = this.chunkFile(fileBuffer);
+						const files = this.createChunkFiles(chunks, podcastFile.basename, fileExtension, mimeType);
+						transcription = await this.transcribeChunksWithOpenAI(files, notice.update);
+					} else {
+						notice.update("Starting transcription with WhisperCPP...");
+						transcription = await this.transcribeWithWhisperCPP(fileBuffer, fileExtension, notice.update);
+					}
 			}
 
 			notice.update("Saving transcription...");
@@ -354,5 +368,22 @@ export class TranscriptionService {
 		} else {
 			throw new Error("Expected a file but got a folder");
 		}
+	}
+
+	private async transcribeWithLightweight(fileBuffer: ArrayBuffer): Promise<string> {
+		try {
+			return await this.lightweightService.transcribeAudio(fileBuffer);
+		} catch (error) {
+			console.error("Lightweight transcription error:", error);
+			throw new Error(`Lightweight transcription failed: ${error.message}`);
+		}
+	}
+
+	/**
+	 * Clean up resources when the plugin is unloaded
+	 */
+	public cleanup(): void {
+		// Clean up the lightweight service
+		this.lightweightService?.cleanup();
 	}
 }

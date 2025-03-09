@@ -74,12 +74,13 @@ export const DEFAULT_SETTINGS: IPodsidianSettings = {
 	// Ollama settings
 	ollamaEnabled: false,
 	ollamaUrl: 'http://localhost:11434',
-	ollamaModel: 'llama3',
+	ollamaModel: 'llama3.1',
 	
 	// Transcription settings
 	transcriptionEnabled: true,
-	whisperCppUrl: '',  // No longer needed but kept for backward compatibility
-	whisperCppModel: 'tiny',  // No longer needed but kept for backward compatibility
+	transcriptionMode: 'lightweight', // Default to lightweight model
+	whisperCppUrl: 'http://localhost:8080',  // Default WhisperCPP server URL
+	whisperCppModel: 'tiny',  // Default model (fastest)
 	insightPromptTemplate: 'You are an assistant that provides insights about podcast segments. Analyze the following podcast transcript and provide key points, insights, and a brief summary:\n\n{transcription}',
-	useOpenAIForTranscription: false  // false means use local processing, true means use OpenAI API directly
+	useOpenAIForTranscription: false  // Keeping for backward compatibility
 };
